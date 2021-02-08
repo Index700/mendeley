@@ -1,0 +1,5 @@
+clientId: {id}
+clientSecret: {secret}
+user: {user_email}
+pass: {password}
+group: {group_name}
