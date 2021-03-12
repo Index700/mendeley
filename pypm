@@ -1,0 +1,233 @@
+#! /usr/bin/python3
+# Copyright (c) 2020, Keita Kitaura
+# All rights reserved.
+#
+# $Id: $
+#
+
+from mendeley import Mendeley
+from mendeley.session import MendeleySession
+import yaml
+import os
+import re
+import requests
+import sys
+import glob
+
+from perlcompat import getopts,die
+# ref: https://stackoverflow.com/questions/47777288/authentication-issue-in-mendeley-python-sdk
+
+def get_paper_info(session, p_file):
+    "p_file ファイルの情報を取得する。"
+    paper = session.documents.create_from_file(p_file)
+
+    return paper
+    
+def delete_paper_from_library(paper):
+    "paper文献を削除する"
+    paper.delete()
+    return 0
+    
+def add_paper_to_library(server, directory, user, session, p_file):
+    "共有サーバー server 上の directory ディレクトリ に p_file ファイルを置く"    
+    get_papers_list(server,directory)    
+    paper = get_paper_info(session, p_file)
+    print(paper.title,paper.year)
+    f = open("/tmp/p_list")    
+    for docs in f:
+        doc_info = docs.split(",")
+        if paper.title == doc_info[1]:
+            print(f"{p_file} has already existed in your library.")
+            return 0
+    add_paper_info(paper,user)
+    os.system(f"cp {p_file} /tmp/{user}-{paper.id}.pdf")
+    os.system(f"rsync -auv /tmp/p_list /tmp/{user}-{paper.id}.pdf {server}:{directory}/")
+    delete_paper_from_library(paper)
+    return 0
+
+def add_all_pdf(server, directory, user, session, p_dir):
+    "dirc ディレクトリ内の pdf ファイルを全て ライブラリ に追加 "    
+    if not os.path.isdir(p_dir):
+        print(f"{p_dir} is not a directory or does not exist.")
+        return 0
+    
+    pdf_list = glob.glob(f"{p_dir}/*.pdf")
+    print(pdf_list)
+    for doc in pdf_list:
+        add_paper_to_library(server,directory, user, session, doc)
+
+    return 0
+    
+def add_paper_info(paper,user):
+    "文献の情報を p_list に追加する"
+    # print(f"{paper.id}, {paper.title}, {paper.year}")
+    f = open("/tmp/p_list",'a')    
+    f.write(f"{user}-{paper.id},{paper.title},{paper.year},\n")
+    f.close()
+
+    return 0
+
+def get_papers_list(server,directory):
+    "server サーバー上にある文献リストファイルを同期"
+    os.system(f"rsync -auv {server}:{directory}/p_list /tmp/p_list")
+
+    return 0
+
+
+def search_from_years(server,directory,years):
+    "ライブラリにある文献からy_min 年から y_max 年までの文献のリストを返す"
+
+    y_list = years.split(',')
+    y_min = int(y_list[0])
+    y_max = int(y_list[1])
+    count = 0
+    papers = []
+    get_papers_list(server,directory)
+    f = open("/tmp/p_list",'rt')                
+
+    for doc in f:
+        doc_info = doc.split(",")
+        year = doc_info[2]
+        if int(year) >= y_min and int(year) <= y_max:
+            print(doc_info[1],doc_info[2])
+            papers.append(doc_info)
+            count = count + 1
+            
+    if count == 0:    
+        print(f"Library does not have any papers from {y_min} to {y_max}.")
+
+    return papers
+
+def search_from_words(server,directory,word):
+    "ライブラリにある文献からタイトルに word を含む文献のリストを返す"
+    count = 0
+    papers = []
+    
+    get_papers_list(server)
+    f = open("/tmp/p_list",'rt')                
+
+    for doc in f:
+        doc_info = doc.split(",")
+        title = doc_info[1]
+        if re.search(word,title) != None:
+            print(title,doc_info[2])
+            papers.append(doc_info)
+            count = count + 1
+    if count == 0:
+        print(f"Library does not have '{word}'.")
+
+    return papers
+
+def show_papers(papers):
+    "papers に含まれる文献のタイトル、掲載年を表示する。"
+    for paper in papers:
+        print(paper[1],paper[2])
+
+    return 0
+
+def get_paper_file(server,papers):
+    "papers に含まれる文献のpdfファイルをローカルに落とす"
+    for paper in papers:
+        name = paper[0]
+        os.system(f"rsync -auv {server}:~keita/tmp/{name}.pdf /tmp/")
+
+    return 0
+
+def outputs(server, papers, output):
+    "出力方法を選択"
+    if output == "text":
+        show_papers(papers)
+    elif output == "file":
+        get_paper_file(server, papers)
+    else:
+        print(f"No output format '{output}'.")
+        print(f"Please choose 'text' or 'file'.")
+
+    return 0
+            
+
+def search_config(f_name):
+    "config ファイルの中から情報を取得"
+    "以下で登録http://dev.mendeley.com/"
+    config = {}
+    if os.path.isfile(f_name): 
+        with open(f_name) as f:
+            f_lines = f.readlines()
+            for line in f_lines:
+                content = line.split(':')
+                config[content[0]] = re.findall(r'{(.*?)}',content[1])[0]
+    else:
+        print("Please make config file(conifg.txt)")
+    return config
+
+def get_mendeley_info(config):
+    "Return mendeley information from 'config' file"
+    redirect_url = "http://localhost:8000/testing"
+    
+    # mendeley = Mendeley(client_id,client_secret,redirect_uri=redirect_url)
+    mendeley = Mendeley(config['clientId'],config['clientSecret'],redirect_uri=redirect_url)
+
+    auth = mendeley.start_implicit_grant_flow()
+    login_url = auth.get_login_url()
+
+    res = requests.post(login_url,allow_redirects = False, data = {
+        'username': config['m_user'],
+        'password': config['pass']
+    })    
+    auth_response = res.headers['Location']
+
+    session = auth.authenticate(auth_response)
+
+    return session
+    
+
+def usage():
+    die("""\
+usage: {} [-o output][-a file] [-d directory] [-w word] [-y min,max] 
+  - o Output format:
+     text: standard output
+     file: download pdf file
+  -a Add "file" to your library
+  -d Add all pdf files in "directory" to your library
+  -w Show the papers whose title has "word" 
+  -y Show the papers published from "min" to "max" 
+""".format(sys.argv[0]))
+
+
+def main():
+    opt = getopts('o:a:d:w:y:') or usage()
+    output = opt.o if opt.o else "text"
+    p_file = opt.a if opt.a else "none"
+    p_dir = opt.d if opt.d else "none"
+    words = opt.w if opt.w else "none"
+    years = opt.y if opt.y else '2020,2020'
+
+    # # print(path)
+    config = search_config('config.txt')
+
+    user = config['user']
+    server = config['server']
+    d = config['directory']
+
+    if opt.a:
+        session = get_mendeley_info(config)
+        add_paper_to_library(server, d, user, session, p_file)
+    elif opt.d:
+        session = get_mendeley_info(config)
+        add_all_pdf(server, d, user, session, p_dir)
+    elif opt.y:
+        papers = search_from_years(server,years)
+        outputs(server,directory,papers,output)
+    elif opt.w:
+        papers = search_from_words(server,directory,words)
+        outputs(server,papers,output)
+    # elif path != "none":
+    #     add_pdf_file(group,path)        
+    else:
+        usage()
+
+
+
+
+if __name__ == "__main__":
+    main()

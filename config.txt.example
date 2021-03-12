@@ -1,5 +1,8 @@
 clientId: {id}
 clientSecret: {secret}
-user: {user_email}
-pass: {password}
-group: {group_name}
+m_user: {user_email registered on mendeley}
+pass: {password of mendeley}
+server:{server name}
+user:{your name on the server}
+dirctory:{directory put on papers in the server}
+

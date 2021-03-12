@@ -1,16 +1,38 @@
 # 概要
-mendeley を用いてターミナル上で文献管理を行うアプリケーションです。
+pypm(PYthon Papers Manager)
+共有サーバーを用いて文献の管理、共有を行なうプログラムです。
 
-# 現在機能
-- グループ内で共有されている文献のタイトルリストを表示する。
 
-- タイトルに含まれる文字からグループ内で共有されている文献を検索する
+# How to start
+- mendeley deverloper portal でクライアントを登録する。
 
-- 文献の発表年からグループ内で共有されている文献を検索する
+http://dev.mendeley.com/
+
+- config.txt を作成する
+
+`
+$ cp config.txt.sample config.txt
+`
+
+config.txt に必要なものを記入
+
+
+- pypi から必要なモジュールをダウンロードする。
+
+`
+$ pip install requirements.txt
+`
+
+
 
 # 使い方
-usage: {} [-l] [-w word] [-y min,max]
-  -l Show all of papers in your group library
+`
+usage: {} [-o output][-a file] [-d directory] [-w word] [-y min,max] 
+  - o Output format:
+     text: standard output
+     file: download pdf file
+  -a Add "file" to your library
+  -d Add all pdf files in "directory" to your library
   -w Show the papers whose title has "word" 
   -y Show the papers published from "min" to "max" 
-  # -u Upload "path" file to your group library
+`
