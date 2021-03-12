@@ -18,33 +18,47 @@ config.txt に必要なものを記入
 
 (例)
 
-`
+```
 clientId: {XXXXX}
+
 clientSecret: {XXXXXXXXXXXX}
+
 m_user: {hoge@hoge.com}
+
 pass: {XXXXXXXXXXX}
+
 server:{server}
+
 user:{XXX}
+
 directory:{/share/paper/incoming/mendeley}
-`
+```
 
 
 - pypi から必要なモジュールをダウンロードする。
 
 `
-$ pip install requirements.txt
+$ pip install requirement.txt
 `
 
 
 
 # 使い方
-`
+```
 usage: {} [-o output][-a file] [-d directory] [-w word] [-y min,max] 
-  - o Output format:
-     text: standard output
-     file: download pdf file
-  -a Add "file" to your library
-  -d Add all pdf files in "directory" to your library
-  -w Show the papers whose title has "word" 
-  -y Show the papers published from "min" to "max" 
-`
+
+- o Output format:
+
+text: standard output
+   
+
+file: download pdf file
+
+-a Add "file" to your library
+
+-d Add all pdf files in "directory" to your library
+
+-w Show the papers whose title has "word" 
+
+-y Show the papers published from "min" to "max" 
+```
