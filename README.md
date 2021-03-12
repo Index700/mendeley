@@ -16,6 +16,18 @@ $ cp config.txt.sample config.txt
 
 config.txt に必要なものを記入
 
+(例)
+
+`
+clientId: {XXXXX}
+clientSecret: {XXXXXXXXXXXX}
+m_user: {hoge@hoge.com}
+pass: {XXXXXXXXXXX}
+server:{server}
+user:{XXX}
+directory:{/share/paper/incoming/mendeley}
+`
+
 
 - pypi から必要なモジュールをダウンロードする。
 
